@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class ProductController extends Controller
 {
@@ -30,10 +31,13 @@ class ProductController extends Controller
             'name' => 'required|string',
             'description' => 'required|string',
             'price' => 'required|numeric',
-            'image' => 'required|image',
+            'image_cover' => 'required|image',
         ]);
 
-        $product = Product::create($validated);
+        // Handle image upload
+        $imagePath = $request->file('image_cover') ? $request->file('image_cover')->store('products', 'public') : null;
+
+        $product = Product::create(array_merge($validated, ['image_cover' => $imagePath]));
 
         return response()->json([
             'message' => 'Successfully created product',
@@ -57,15 +61,25 @@ class ProductController extends Controller
      */
     public function update(Request $request, Product $product)
     {
-        $validated = $request->validate([
+        $request->validate([
             'category_id' => 'required|integer',
             'name' => 'required|string',
             'description' => 'required|string',
             'price' => 'required|numeric',
-            'image' => 'required|image',
+            'image_cover' => 'required|image',
         ]);
 
-        $product->update($validated);
+        // Handle image replacement if a new one is uploaded
+        if ($request->hasFile('image_cover')) {
+            if ($product->image_cover) {
+                Storage::disk('public')->delete($product->image_cover);
+            }
+
+            $image = $request->file('image_cover')->store('products');
+            $product->image_cover = $image;
+        }
+
+        $product->update(array_merge($request->except('image_cover'), ['image_cover' => $image]));
 
         return response()->json([
             'message' => 'Successfully updated product',
@@ -78,6 +92,10 @@ class ProductController extends Controller
      */
     public function destroy(Product $product)
     {
+        if ($product->image_cover) {
+            Storage::disk('public')->delete($product->image_cover);
+        }
+
         $product->delete();
 
         return response()->json([

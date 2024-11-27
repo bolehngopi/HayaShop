@@ -20,4 +20,20 @@ class Cart extends Model
         'product_id',
         'quantity',
     ];
+
+    /**
+     * Get the product that owns the cart.
+     */
+    public function product()
+    {
+        return $this->belongsTo(Product::class);
+    }
+
+    /**
+     * Get the user that owns the cart.
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 }

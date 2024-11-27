@@ -21,4 +21,20 @@ class Transaction extends Model
         'quantity',
         'total',
     ];
+
+    /**
+     * Get the user that owns the transaction.
+     */
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Get the transaction items for the product.
+     */
+    public function transactionsItems()
+    {
+        return $this->hasMany(TransactionItem::class);
+    }
 }

@@ -16,10 +16,35 @@ class Product extends Model
      * @var array<int, string>
      */
     protected $fillable = [
-        'category_id',
         'name',
         'description',
         'price',
-        'image',
+        'stock',
+        'image_cover',
+        'category_id',
     ];
+
+    /**
+     * Get the category that owns the product.
+     */
+    public function category()
+    {
+        return $this->belongsTo(Category::class);
+    }
+
+    /**
+     * Get the carts for the product.
+     */
+    public function carts()
+    {
+        return $this->hasMany(Cart::class);
+    }
+
+    /**
+     * Get the transaction for the product.
+     */
+    public function transactionItems()
+    {
+        return $this->hasMany(TransactionItem::class);
+    }
 }

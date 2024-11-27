@@ -20,4 +20,20 @@ class TransactionItem extends Model
         'product_id',
         'quantity',
     ];
+
+    /**
+     * Get the product that owns the transaction item.
+     */
+    public function product()
+    {
+        return $this->belongsTo(Product::class);
+    }
+
+    /**
+     * Get the transaction that owns the transaction item.
+     */
+    public function transaction()
+    {
+        return $this->belongsTo(Transaction::class);
+    }
 }
