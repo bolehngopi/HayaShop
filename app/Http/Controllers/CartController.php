@@ -5,22 +5,16 @@ namespace App\Http\Controllers;
 use App\Models\Cart;
 use App\Models\Product;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class CartController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        $cartItems = Cart::with('product')->where('user_id', Auth::id())->get();
+        $cartItems = Cart::with('product')->where('user_id', auth()->id())->get();
+        return view('cart.index', compact('cartItems'));
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function addToCart(Request $request)
     {
         $validated = $request->validate([
             'product_id' => 'required|exists:products,id',
@@ -30,40 +24,23 @@ class CartController extends Controller
         $product = Product::findOrFail($validated['product_id']);
 
         if ($product->stock < $validated['quantity']) {
-            return response()->json(['message' => 'Insufficient stock'], 400);
+            return back()->withErrors(['error' => 'Insufficient stock']);
         }
 
         $cartItem = Cart::updateOrCreate(
-            ['user_id' => $request->user()->id, 'product_id' => $validated['product_id']],
+            ['user_id' => auth()->id(), 'product_id' => $validated['product_id']],
             ['quantity' => $validated['quantity']]
         );
 
-        return response()->json(['message' => 'Item added to cart', 'cart' => $cartItem]);
+        return redirect()->route('cart.index')->with('success', 'Product added to cart');
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(Cart $cart)
+    public function removeFromCart($id)
     {
-        //
-    }
+        $cartItem = Cart::findOrFail($id);
+        $cartItem->delete();
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Cart $cart)
-    {
-        //
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Cart $cart)
-    {
-        $cart->delete();
-
-        return response()->json(['message' => 'Item removed from cart']);
+        return redirect()->route('cart.index')->with('success', 'Item removed from cart');
     }
 }
+

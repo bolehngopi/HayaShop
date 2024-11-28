@@ -4,103 +4,64 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 class ProductController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index()
     {
-        $products = Product::paginate(10);
-
-        return response()->json([
-            'message' => 'Successfully fetched products',
-            'data' => $products
-        ]);
+        $products = Product::paginate(10); // Paginate results
+        return view('products.index', compact('products'));
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
+    public function create()
+    {
+        return view('products.create');
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'category_id' => 'required|integer',
-            'name' => 'required|string',
-            'description' => 'required|string',
-            'price' => 'required|numeric',
-            'image_cover' => 'required|image',
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'price' => 'required|numeric|min:0',
+            'stock' => 'required|integer|min:0',
+            'image_url' => 'nullable|string',
         ]);
 
-        // Handle image upload
-        $imagePath = $request->file('image_cover') ? $request->file('image_cover')->store('products', 'public') : null;
+        Product::create($validated);
 
-        $product = Product::create(array_merge($validated, ['image_cover' => $imagePath]));
-
-        return response()->json([
-            'message' => 'Successfully created product',
-            'data' => $product
-        ], 201);
+        return redirect()->route('products.index')->with('success', 'Product created successfully');
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(Product $product)
+    public function edit($id)
     {
-        return response()->json([
-            'message' => 'Successfully fetched product',
-            'data' => $product
-        ]);
+        $product = Product::findOrFail($id);
+        return view('products.edit', compact('product'));
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Product $product)
+    public function update(Request $request, $id)
     {
-        $request->validate([
-            'category_id' => 'required|integer',
-            'name' => 'required|string',
-            'description' => 'required|string',
-            'price' => 'required|numeric',
-            'image_cover' => 'required|image',
+        $product = Product::findOrFail($id);
+
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'price' => 'required|numeric|min:0',
+            'stock' => 'required|integer|min:0',
+            'image_url' => 'nullable|string',
         ]);
 
-        // Handle image replacement if a new one is uploaded
-        if ($request->hasFile('image_cover')) {
-            if ($product->image_cover) {
-                Storage::disk('public')->delete($product->image_cover);
-            }
+        $product->update($validated);
 
-            $image = $request->file('image_cover')->store('products');
-            $product->image_cover = $image;
-        }
-
-        $product->update(array_merge($request->except('image_cover'), ['image_cover' => $image]));
-
-        return response()->json([
-            'message' => 'Successfully updated product',
-            'data' => $product
-        ]);
+        return redirect()->route('products.index')->with('success', 'Product updated successfully');
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Product $product)
+    public function destroy($id)
     {
-        if ($product->image_cover) {
-            Storage::disk('public')->delete($product->image_cover);
-        }
-
+        $product = Product::findOrFail($id);
         $product->delete();
 
-        return response()->json([
-            'message' => 'Successfully deleted product',
-            'data' => $product
-        ], 204);
+        return redirect()->route('products.index')->with('success', 'Product deleted successfully');
     }
 }
+
