@@ -27,15 +27,16 @@ class ProductController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'category_id' => 'required|integer',
+            'category_id' => 'integer|exists:category,id',
             'name' => 'required|string',
             'description' => 'required|string',
             'price' => 'required|numeric',
-            'image_cover' => 'required|image',
+            'stock' => 'required|integer',
+            'image_cover' => 'image',
         ]);
 
         // Handle image upload
-        $imagePath = $request->file('image_cover') ? $request->file('image_cover')->store('products', 'public') : null;
+        $imagePath = $request->file('image_cover') ? asset($request->file('image_cover')->store('products', 'public')) : null;
 
         $product = Product::create(array_merge($validated, ['image_cover' => $imagePath]));
 
@@ -62,11 +63,12 @@ class ProductController extends Controller
     public function update(Request $request, Product $product)
     {
         $request->validate([
-            'category_id' => 'required|integer',
+            'category_id' => 'integer|exists:category,id',
             'name' => 'required|string',
             'description' => 'required|string',
             'price' => 'required|numeric',
-            'image_cover' => 'required|image',
+            'stock' => 'required|integer',
+            'image_cover' => 'image',
         ]);
 
         // Handle image replacement if a new one is uploaded
@@ -76,10 +78,10 @@ class ProductController extends Controller
             }
 
             $image = $request->file('image_cover')->store('products');
-            $product->image_cover = $image;
+            $product->image_cover = asset($image);
         }
 
-        $product->update(array_merge($request->except('image_cover'), ['image_cover' => $image]));
+        $product->update(array_merge($request->except('image_cover'), ['image_cover' => $image ?? '']));
 
         return response()->json([
             'message' => 'Successfully updated product',

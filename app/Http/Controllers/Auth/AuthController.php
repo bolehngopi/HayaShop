@@ -16,7 +16,7 @@ class AuthController extends Controller
         $validated = $request->validate([
             'name' => 'required|string',
             'email' => 'required|email|unique:users',
-            'password' => ['required', Password::min(8)->mixedCase()->letters()->numbers()->symbols()],
+            'password' => ['required', Password::min(8)],
         ]);
 
         $user = User::create([
@@ -55,7 +55,7 @@ class AuthController extends Controller
             'message' => 'User logged in successfully',
             'user' => $user,
             'token' => $token,
-        ]);
+        ], 201);
     }
 
     public function logout(Request $request)

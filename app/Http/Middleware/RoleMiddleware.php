@@ -15,17 +15,21 @@ class RoleMiddleware
      *
      * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
      */
-    public function handle(Request $request, Closure $next): Response
+    public function handle(Request $request, Closure $next, $role): Response
     {
         /**
          * @var \App\Models\User $user
          */
         $user = Auth::user();
+        $userRole = $user->role->name;
 
         // Check if the user is authenticated and has a valid role
-        if (!$user || !$user->role || $user !== 'admin') {
+        if (!$user || !$user->role || $userRole !== $role) {
             return response()->json(
-                ['message' => 'Unauthorized'],
+                [
+                    'message' => 'Unauthorized',
+                    'role' => $user->role
+                ],
                 403
             );
         }
