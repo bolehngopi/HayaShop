@@ -24,7 +24,7 @@ Route::prefix('auth')->group(function () {
 
 Route::prefix('products')->group(function () {
     Route::get('/', [ProductController::class, 'index']);
-    Route::get('/{id}', [ProductController::class, 'show']);
+    Route::get('/{product}', [ProductController::class, 'show']);
     Route::get('/search', [ProductController::class, 'search']);
 
     Route::middleware(['auth:sanctum', RoleMiddleware::class . ':admin'])->group(function () {

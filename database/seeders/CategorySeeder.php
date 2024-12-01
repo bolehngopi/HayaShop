@@ -14,11 +14,26 @@ class CategorySeeder extends Seeder
     public function run(): void
     {
         Category::insert([
-            ['name' => 'Electronics'],
-            ['name' => 'Clothing'],
-            ['name' => 'Books'],
-            ['name' => 'Toys'],
-            ['name' => 'Furniture'],
+            [
+                'name' => 'Electronics',
+                'description' => 'Electronic devices and accessories'
+            ],
+            [
+                'name' => 'Clothing',
+                'description' => 'Clothing and apparel'
+            ],
+            [
+                'name' => 'Books',
+                'description' => 'Books and literature'
+            ],
+            [
+                'name' => 'Toys',
+                'description' => 'Toys and games'
+            ],
+            [
+                'name' => 'Furniture',
+                'description' => 'Furniture and home decor'
+            ],
         ]);
     }
 }

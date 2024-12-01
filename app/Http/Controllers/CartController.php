@@ -15,6 +15,8 @@ class CartController extends Controller
     public function index()
     {
         $cartItems = Cart::with('product')->where('user_id', Auth::id())->get();
+
+        return response()->json(['cart' => $cartItems]);
     }
 
     /**
