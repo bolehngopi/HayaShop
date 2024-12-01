@@ -27,6 +27,7 @@ class TransactionController extends Controller
             'items' => 'required|array',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
+            'shipping_address' => 'required|string',
         ]);
 
         $total = 0;
@@ -42,8 +43,9 @@ class TransactionController extends Controller
 
         $transaction = Transaction::create([
             'user_id' => $request->user()->id,
-            'total_amount' => $total,
+            'total_amount' => $total + 50000,
             'status' => 'pending',
+            'shipping_address' => $validated['shipping_address'],
         ]);
 
         foreach ($validated['items'] as $item) {

@@ -14,9 +14,33 @@ class CartController extends Controller
      */
     public function index()
     {
-        $cartItems = Cart::with('product')->where('user_id', Auth::id())->get();
+        try {
+            // Fetch cart items with product details
+            $cartItems = Cart::with('product')
+                ->where('user_id', Auth::id())
+                ->get();
 
-        return response()->json(['cart' => $cartItems]);
+            // Handle case where the cart is empty
+            if ($cartItems->isEmpty()) {
+                return response()->json(['message' => 'Your cart is empty'], 200);
+            }
+
+            // Return the cart items in a structured response
+            return response()->json([
+                'success' => true,
+                'cart' => $cartItems,
+                'total_items' => $cartItems->count(),
+                'total_price' => $cartItems->sum(fn($item) => $item->product->price * $item->quantity),
+            ], 200);
+        } catch (\Exception $e) {
+            // Handle exceptions and return a generic error response
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred while fetching the cart',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+
     }
 
     /**
