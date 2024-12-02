@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\CartController;
+use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Middleware\RoleMiddleware;
@@ -25,12 +26,24 @@ Route::prefix('auth')->group(function () {
 Route::prefix('products')->group(function () {
     Route::get('/', [ProductController::class, 'index']);
     Route::get('/{product}', [ProductController::class, 'show']);
-    Route::get('/search', [ProductController::class, 'search']);
 
     Route::middleware(['auth:sanctum', RoleMiddleware::class . ':admin'])->group(function () {
         Route::post('/', [ProductController::class, 'store']);
         Route::put('/{id}', [ProductController::class, 'update']);
         Route::delete('/{id}', [ProductController::class, 'destroy']);
+    });
+});
+
+Route::get('/search', [ProductController::class, 'search']);
+
+Route::prefix('categories')->group(function () {
+    Route::get('/', [CategoryController::class, 'index']);
+    Route::get('/{category}', [CategoryController::class, 'show']);
+
+    Route::middleware(['auth:sanctum', RoleMiddleware::class . ':admin'])->group(function () {
+        Route::post('/', [CategoryController::class, 'store']);
+        Route::put('/{id}', [CategoryController::class, 'update']);
+        Route::delete('/{id}', [CategoryController::class, 'destroy']);
     });
 });
 
@@ -40,7 +53,7 @@ Route::prefix('cart')->middleware('auth:sanctum')->group(function () {
     Route::delete('/{id}', [CartController::class, 'destroy']);
 });
 
-Route::prefix('transactions')->middleware('auth:sanctum')->group(function () {
+Route::prefix('checkout')->middleware('auth:sanctum')->group(function () {
     Route::get('/', [TransactionController::class, 'index']);
     Route::post('/', [TransactionController::class, 'store']);
 });

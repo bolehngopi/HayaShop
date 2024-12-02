@@ -11,57 +11,6 @@ class ProductController extends Controller
     /**
      * Display a listing of the resource.
      */
-    // public function index(Request $request)
-    // {
-    //     $request->validate([
-    //         'sort' => 'string|in:price,name,stock',
-    //         'order' => 'string|in:asc,desc',
-    //         'per_page' => 'integer',
-    //         'page' => 'integer',
-    //         'category' => 'integer|exists:category,id'
-    //     ]);
-
-    //     $products = Product::where('category_id', 'like', '%' . $request->category . '%')
-    //         ->where('price', '>=', $request->price ?? 0)
-    //         ->where('price', '<=', $request->priceMax ?? PHP_INT_MAX)
-    //         ->where('stock', '>', $request->availability === 'in_stock' ? 0 : -1)
-    //         ->orderBy($request->sort ?? 'created_at', $request->order ?? 'asc')
-    //         ->paginate($request->per_page ?? 10);
-    //     // paginate($request->per_page ?? 10, ['*'], 'page', $request->page ?? 1);
-
-    //     // if ($request->has('category')) {
-    //     //     $products = $products->filter(function ($product) use ($request) {
-    //     //         return $product->category_id == $request->category;
-    //     //     });
-    //     // }
-
-    //     // Handle filter by price
-    //     // if ($request->has('price')) {
-    //     //     $products = $products->filter(function ($product) use ($request) {
-    //     //         return $product->price >= $request->price;
-    //     //     });
-    //     // }
-
-    //     // if ($request->has('priceMin') || $request->has('priceMax')) {
-    //     //     $products = $products->filter(function ($product) use ($request) {
-    //     //         $priceMin = $request->priceMin ?? 0;
-    //     //         $priceMax = $request->priceMax ?? PHP_INT_MAX;
-    //     //         return $product->price >= $priceMin && $product->price <= $priceMax;
-    //     //     });
-    //     // }
-
-    //     // if ($request->has('availability')) {
-    //     //     $products = $products->filter(function ($product) use ($request) {
-    //     //         return $request->availability === 'in_stock' ? $product->stock > 0 : $product->stock === 0;
-    //     //     });
-    //     // }
-
-    //     return response()->json([
-    //         'message' => 'Successfully fetched products',
-    //         'data' => $products
-    //     ]);
-    // }
-
     public function index(Request $request)
     {
         $request->validate([
@@ -174,7 +123,7 @@ class ProductController extends Controller
             $product->image_cover = asset($image);
         }
 
-        $product->update(array_merge($request->except('image_cover'), ['image_cover' => $image ?? '']));
+        $product->update(array_merge($request->except('image_cover'), ['image_cover' => $image ?? null]));
 
         return response()->json([
             'message' => 'Successfully updated product',
@@ -204,22 +153,39 @@ class ProductController extends Controller
      */
     public function search(Request $request)
     {
-        $request->validate([
-            'query' => 'required|string'
-        ]);
+        // Validate input
+        $query = $request->input('query');
+        $category = $request->input('category');
 
-        $products = Product::where('name', 'like', "%" . $request->query . "%")->get();
-
-        // Filter the category of the product
-        if ($request->has('category')) {
-            $products = $products->filter(function ($product) use ($request) {
-                return $product->category_id == $request->category;
-            });
+        if (!$query) {
+            return response()->json([
+                'message' => 'Please provide a search query'
+            ], 400); // Return 400 for bad request
         }
 
-        return response()->json([
-            'message' => 'Successfully fetched products',
-            'data' => $products
-        ]);
+        try {
+            // Build the query
+            $query = Product::where('name', 'like', "%" . $query . "%");
+
+            if ($request->has('category') && $category) {
+                $query->where('category_id', $category);
+            }
+
+            $products = $query->get(); // Select only required fields
+
+            return response()->json([
+                'message' => $products->isEmpty() ? 'No products found' : 'Successfully fetched products',
+                'results' => $products
+            ], 200); // Always return 200 for a valid request
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'An error occurred while processing your request',
+                'error' => $e->getMessage()
+            ], 500); // Return 500 for server errors
+        }
     }
+
+
+
 }

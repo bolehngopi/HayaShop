@@ -14,7 +14,10 @@ class TransactionController extends Controller
      */
     public function index(Request $request)
     {
-        $transactions = Transaction::with('items.product')->where('user_id', $request->user()->id)->get();
+        $transactions = Transaction::with('items.product')
+            ->where('user_id', $request->user()->id)
+            ->get();
+
         return response()->json($transactions);
     }
 
@@ -28,24 +31,21 @@ class TransactionController extends Controller
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
             'shipping_address' => 'required|string',
+            'total_amount' => 'required|numeric',
         ]);
-
-        $total = 0;
 
         foreach ($validated['items'] as $item) {
             $product = Product::findOrFail($item['product_id']);
             if ($product->stock < $item['quantity']) {
                 return response()->json(['message' => "Insufficient stock for product {$product->name}"], 400);
             }
-
-            $total += $product->price * $item['quantity'];
         }
 
         $transaction = Transaction::create([
             'user_id' => $request->user()->id,
-            'total_amount' => $total + 50000,
             'status' => 'pending',
             'shipping_address' => $validated['shipping_address'],
+            'total_amount' => $validated['total_amount'],
         ]);
 
         foreach ($validated['items'] as $item) {
@@ -56,12 +56,16 @@ class TransactionController extends Controller
                 'price' => Product::find($item['product_id'])->price,
             ]);
 
-            $product = Product::find($item['product_id']);
-            $product->decrement('stock', $item['quantity']);
+            Product::find($item['product_id'])->decrement('stock', $item['quantity']);
         }
 
-        return response()->json(['message' => 'Transaction completed', 'transaction' => $transaction]);
+        // Remove user cart
+        $request->user()->carts()->delete();
+
+        return response()->json(['message' => 'Transaction completed', 'transaction' => $transaction], 200);
     }
+
+
     /**
      * Display the specified resource.
      */

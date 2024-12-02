@@ -17,9 +17,10 @@ class Transaction extends Model
      */
     protected $fillable = [
         'user_id',
-        'product_id',
         'quantity',
-        'total',
+        'total_amount',
+        'shipping_address',
+        'status'
     ];
 
     /**
@@ -33,7 +34,7 @@ class Transaction extends Model
     /**
      * Get the transaction items for the product.
      */
-    public function transactionsItems()
+    public function items()
     {
         return $this->hasMany(TransactionItem::class);
     }

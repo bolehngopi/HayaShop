@@ -30,7 +30,7 @@ class UserController extends Controller
                 Storage::disk('public')->delete(storage_path($user->image));
             }
 
-            $image = $request->file('image')->store('products');
+            $image = $request->file('image')->store('users');
             $user->image = asset($image);
         }
 
