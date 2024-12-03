@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class ProductController extends Controller
@@ -16,11 +17,11 @@ class ProductController extends Controller
         $request->validate([
             'sort' => 'string|in:price,name,stock',
             'order' => 'string|in:asc,desc',
-            'per_page' => 'integer',
-            'page' => 'integer',
-            'category' => 'integer|exists:categories,id', // Adjust the table name if necessary
-            'priceMin' => 'numeric',
-            'priceMax' => 'numeric',
+            'per_page' => 'integer|min:1',
+            'page' => 'integer|min:1',
+            'category' => 'integer|exists:categories,id',
+            'priceMin' => 'numeric|min:0',
+            'priceMax' => 'numeric|min:0',
             'availability' => 'string|in:in_stock,out_of_stock',
         ]);
 
@@ -41,11 +42,7 @@ class ProductController extends Controller
 
         // Apply availability filter
         if ($request->filled('availability')) {
-            if ($request->availability === 'in_stock') {
-                $query->where('stock', '>', 0);
-            } elseif ($request->availability === 'out_of_stock') {
-                $query->where('stock', '<=', 0);
-            }
+            $query->where('stock', $request->availability === 'in_stock' ? '>' : '<=', 0);
         }
 
         // Apply sorting
@@ -53,7 +50,7 @@ class ProductController extends Controller
             $query->orderBy($request->sort, $request->order);
         }
 
-        // Paginate the results
+        // Paginate results
         $products = $query->paginate($request->per_page ?? 10);
 
         return response()->json([
@@ -62,29 +59,32 @@ class ProductController extends Controller
         ]);
     }
 
-
     /**
      * Store a newly created resource in storage.
      */
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'category_id' => 'integer|exists:category,id',
+            'category_id' => 'integer|exists:categories,id',
             'name' => 'required|string',
             'description' => 'required|string',
-            'price' => 'required|numeric',
-            'stock' => 'required|integer',
-            'image_cover' => 'image',
+            'price' => 'required|numeric|min:0',
+            'stock' => 'required|integer|min:0',
+            'image_cover' => 'nullable|image',
         ]);
 
         // Handle image upload
-        $imagePath = $request->file('image_cover') ? asset($request->file('image_cover')->store('products', 'public')) : null;
+        $imagePath = $request->file('image_cover')
+            ? $request->file('image_cover')->store('products', 'public')
+            : null;
 
-        $product = Product::create(array_merge($validated, ['image_cover' => $imagePath]));
+        $product = Product::create(array_merge($validated, [
+            'image_cover' => $imagePath ? asset("storage/$imagePath") : null,
+        ]));
 
         return response()->json([
             'message' => 'Successfully created product',
-            'data' => $product
+            'data' => $product,
         ], 201);
     }
 
@@ -95,7 +95,7 @@ class ProductController extends Controller
     {
         return response()->json([
             'message' => 'Successfully fetched product',
-            'data' => $product
+            'data' => $product,
         ]);
     }
 
@@ -104,30 +104,34 @@ class ProductController extends Controller
      */
     public function update(Request $request, Product $product)
     {
-        $request->validate([
-            'category_id' => 'integer|exists:category,id',
+        $validated = $request->validate([
+            'category_id' => 'integer|exists:categories,id',
             'name' => 'required|string',
             'description' => 'required|string',
-            'price' => 'required|numeric',
-            'stock' => 'required|integer',
-            'image_cover' => 'image',
+            'price' => 'required|numeric|min:0',
+            'stock' => 'required|integer|min:0',
+            'image_cover' => 'nullable|image|max:2048',
         ]);
 
-        // Handle image replacement if a new one is uploaded
-        if ($request->hasFile('image_cover')) {
-            if ($product->image_cover) {
-                Storage::disk('public')->delete(storage_path($product->image_cover));
-            }
+        Log::info(request()->all());
+        Log::info($request->all());
 
-            $image = $request->file('image_cover')->store('products');
-            $product->image_cover = asset($image);
+        // Handle image upload if present
+        if ($request->hasFile('image_cover')) {
+            $imagePath = $request->file('image_cover')->store('products', 'public');
+            $validated['image_cover'] = asset("storage/$imagePath");
+
+            // Optional: delete old image if necessary
+            if ($product->image_cover) {
+                Storage::delete(str_replace(asset('storage/'), '', $product->image_cover));
+            }
         }
 
-        $product->update(array_merge($request->except('image_cover'), ['image_cover' => $image ?? null]));
+        $product->update($validated);
 
         return response()->json([
             'message' => 'Successfully updated product',
-            'data' => $product
+            'data' => $product,
         ]);
     }
 
@@ -137,55 +141,43 @@ class ProductController extends Controller
     public function destroy(Product $product)
     {
         if ($product->image_cover) {
-            Storage::disk('public')->delete(storage_path($product->image_cover));
+            Storage::disk('public')->delete($product->image_cover);
         }
 
         $product->delete();
 
         return response()->json([
             'message' => 'Successfully deleted product',
-            'data' => $product
-        ], 204);
+        ], 200);
     }
 
     /**
-     *  Search for a product
+     * Search for a product.
      */
     public function search(Request $request)
     {
-        // Validate input
-        $query = $request->input('query');
-        $category = $request->input('category');
+        $request->validate([
+            'query' => 'required|string',
+            'category' => 'integer|exists:categories,id',
+        ]);
 
-        if (!$query) {
-            return response()->json([
-                'message' => 'Please provide a search query'
-            ], 400); // Return 400 for bad request
+        $query = Product::query();
+
+        // Filter by search term
+        if ($request->filled('query')) {
+            $query->where('name', 'like', '%' . $request->input('query') . '%');
         }
 
-        try {
-            // Build the query
-            $query = Product::where('name', 'like', "%" . $query . "%");
-
-            if ($request->has('category') && $category) {
-                $query->where('category_id', $category);
-            }
-
-            $products = $query->get(); // Select only required fields
-
-            return response()->json([
-                'message' => $products->isEmpty() ? 'No products found' : 'Successfully fetched products',
-                'results' => $products
-            ], 200); // Always return 200 for a valid request
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'message' => 'An error occurred while processing your request',
-                'error' => $e->getMessage()
-            ], 500); // Return 500 for server errors
+        // Filter by category
+        if ($request->filled('category')) {
+            $query->where('category_id', $request->category);
         }
+
+        $products = $query->get();
+
+        return response()->json([
+            'message' => $products->isEmpty() ? 'No products found' : 'Successfully fetched products',
+            'results' => $products,
+        ]);
     }
-
-
-
 }

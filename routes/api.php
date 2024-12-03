@@ -29,8 +29,8 @@ Route::prefix('products')->group(function () {
 
     Route::middleware(['auth:sanctum', RoleMiddleware::class . ':admin'])->group(function () {
         Route::post('/', [ProductController::class, 'store']);
-        Route::put('/{id}', [ProductController::class, 'update']);
-        Route::delete('/{id}', [ProductController::class, 'destroy']);
+        Route::put('/{product}', [ProductController::class, 'update']);
+        Route::delete('/{product}', [ProductController::class, 'destroy']);
     });
 });
 
